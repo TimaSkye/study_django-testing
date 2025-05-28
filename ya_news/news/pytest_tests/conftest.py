@@ -2,6 +2,7 @@ import pytest
 from django.conf import settings
 from django.test.client import Client
 from django.urls import reverse
+
 from news.models import Comment, News
 
 
@@ -37,8 +38,8 @@ def anonymous_client():
 @pytest.fixture
 def news():
     return News.objects.create(
-        title='Тестовый заголовок',
-        text='Тестовый текст новости',
+        title='Заголовок',
+        text='Текст новости',
     )
 
 
@@ -47,7 +48,7 @@ def comment(author, news):
     return Comment.objects.create(
         news=news,
         author=author,
-        text='Тестовый комментарий',
+        text='Комментарий',
     )
 
 
@@ -64,7 +65,7 @@ def comment_id(comment):
 @pytest.fixture
 def news_list():
     all_news = [
-        News(title=f'Новость {index}', text='Просто текст.')
+        News(title=f'Новость {index}', text='Текст.')
         for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
     ]
     return News.objects.bulk_create(all_news)
