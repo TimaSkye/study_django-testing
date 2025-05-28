@@ -73,13 +73,11 @@ class TestRoutes(TestCase):
     def test_redirects_for_anonymous(self):
         """Проверка редиректов для анонимных пользователей."""
         login_url = reverse('users:login')
-        protected_urls = [
-                             (url_name, False) for url_name in
-                             self.AUTH_USER_URLS
-                         ] + [
-                             (url_name, True) for url_name in
-                             self.AUTHOR_ONLY_URLS
-                         ]
+        protected_urls = [(url_name, False) for url_name in
+                          self.AUTH_USER_URLS
+                          ] + [(url_name, True) for url_name in
+                               self.AUTHOR_ONLY_URLS
+                               ]
         for url_name, needs_slug in protected_urls:
             with self.subTest(url_name=url_name):
                 args = (self.note.slug,) if needs_slug else ()
