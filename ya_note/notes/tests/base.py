@@ -6,13 +6,11 @@ from notes.models import Note
 
 User = get_user_model()
 
-# Общие константы
 NOTE_TITLE = 'Тестовая заметка'
 NOTE_TEXT = 'Текст заметки'
 SLUG = 'test-note'
 NEW_SLUG = 'new-slug'
 
-# URL-маршруты
 URLS = {
     'NOTE_LIST': 'notes:list',
     'NOTE_ADD': 'notes:add',
