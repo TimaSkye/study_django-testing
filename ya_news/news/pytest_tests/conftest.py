@@ -53,27 +53,11 @@ def comment(author, news):
 
 
 @pytest.fixture
-def news_id(news):
-    return news.id
-
-
-@pytest.fixture
-def comment_id(comment):
-    return comment.id
-
-
-@pytest.fixture
 def news_list():
-    all_news = [
+    return News.objects.bulk_create(
         News(title=f'Новость {index}', text='Текст.')
         for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
-    ]
-    return News.objects.bulk_create(all_news)
-
-
-@pytest.fixture
-def comment_form_data():
-    return {'text': 'Текст комментария'}
+    )
 
 
 @pytest.fixture
@@ -94,3 +78,23 @@ def comment_edit_url(comment_id):
 @pytest.fixture
 def url_to_comments(news_detail_url):
     return f'{news_detail_url}#comments'
+
+
+@pytest.fixture
+def home_url():
+    return reverse('news:home')
+
+
+@pytest.fixture
+def news_detail_url(news):
+    return reverse('news:detail', args=(news.id,))
+
+
+@pytest.fixture
+def news_id(news):
+    return news.id
+
+
+@pytest.fixture
+def comment_id(comment):
+    return comment.id

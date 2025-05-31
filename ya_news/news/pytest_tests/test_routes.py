@@ -2,57 +2,74 @@ from http import HTTPStatus
 
 import pytest
 from django.urls import reverse
-from pytest_django.asserts import assertRedirects
+
+pytestmark = pytest.mark.django_db
 
 COMMON_PAGES = [
-    ("news:home", None),
-    ("news:detail", "news_id"),
-    ("users:login", None),
-    ("users:signup", None),
-]
-COMMENT_ACTIONS = ["news:edit", "news:delete"]
-CLIENT_CASES = [
-    ("not_author_client", HTTPStatus.NOT_FOUND),
-    ("author_client", HTTPStatus.OK),
+    ("news:home", None, "get", HTTPStatus.OK),
+    ("news:detail", "news_id", "get", HTTPStatus.OK),
+    ("users:login", None, "get", HTTPStatus.OK),
+    ("users:signup", None, "get", HTTPStatus.OK),
+    ("users:logout", None, "post", HTTPStatus.OK),
 ]
 
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("name, args_fixture", COMMON_PAGES)
-def test_pages_availability(client, name,
-                            args_fixture, news_id):
-    """Тест доступности основных страниц."""
-    url_args = (news_id,) if args_fixture == "news_id" else ()
-    url = reverse(name, args=url_args or None)
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
+COMMENT_ACTIONS = [
+    ("news:edit", "comment_id", "get"),
+    ("news:delete", "comment_id", "get"),
+]
 
 
-def test_logout_availability(client):
-    """Тест доступности выхода через POST."""
-    response = client.post(reverse("users:logout"))
-    assert response.status_code == HTTPStatus.OK
+def get_url(name, arg_name, request):
+    """
+    Генерирует URL по имени маршрута с аргументом из фикстуры,
+    если он указан.
+    """
+    if not arg_name:
+        return reverse(name)
+    return reverse(name, args=(request.getfixturevalue(arg_name),))
 
 
-@pytest.mark.parametrize("client_fixture, expected", CLIENT_CASES)
-@pytest.mark.parametrize("action", COMMENT_ACTIONS)
-def test_comment_actions_access(
-        request, action,
-        client_fixture, expected,
-        comment):
-    """Тест прав доступа к действиям с комментариями."""
-    client = request.getfixturevalue(client_fixture)
-    url = reverse(action, args=(comment.id,))
-    response = client.get(url)
+@pytest.mark.parametrize("name,arg_name,method,expected", COMMON_PAGES)
+def test_common_pages_status(request, author_client, name, arg_name, method,
+                             expected):
+    """Тест статус-кодов основных страниц для авторизованного пользователя."""
+    url = get_url(name, arg_name, request)
+    client = author_client
+    response = getattr(client, method)(url)
     assert response.status_code == expected
 
 
-@pytest.mark.django_db
-@pytest.mark.parametrize("action", COMMENT_ACTIONS)
-def test_redirects_for_anonymous(client, action, comment):
-    """Тест редиректов для анонимных пользователей."""
-    url = reverse(action, args=(comment.id,))
+@pytest.mark.parametrize("action,arg_name,method", COMMENT_ACTIONS)
+def test_comment_action_status_author(request, author_client, action,
+                                      arg_name, method):
+    """Тест доступа автора к редактированию и удалению комментария."""
+    url = get_url(action, arg_name, request)
+    response = getattr(author_client, method)(url)
+    assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.parametrize("action,arg_name,method", COMMENT_ACTIONS)
+def test_comment_action_status_not_author(request, not_author_client, action,
+                                          arg_name, method):
+    """
+    Тест отказа в доступе не-автору
+    к редактированию и удалению комментария.
+    """
+    url = get_url(action, arg_name, request)
+    response = getattr(not_author_client, method)(url)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.parametrize("action,arg_name,method", COMMENT_ACTIONS)
+def test_comment_action_redirect_anonymous(request, client, action, arg_name,
+                                           method):
+    """
+    Тест редиректа анонимного пользователя
+    со страниц действий с комментарием.
+    """
+    url = get_url(action, arg_name, request)
     login_url = reverse("users:login")
-    expected_url = f"{login_url}?next={url}"
-    response = client.get(url)
-    assertRedirects(response, expected_url)
+    expected_redirect = f"{login_url}?next={url}"
+    response = getattr(client, method)(url)
+    assert response.status_code == HTTPStatus.FOUND
+    assert response.url == expected_redirect

@@ -4,24 +4,24 @@ from django.urls import reverse
 
 from news.forms import CommentForm
 
+pytestmark = pytest.mark.django_db
+
 
 @pytest.mark.django_db
 def test_news_count_on_home_page(client, news_list):
     """Тест, на главной не больше NEWS_COUNT_ON_HOME_PAGE новостей."""
     response = client.get(reverse('news:home'))
-    assert len(
-        response.context['object_list']) == settings.NEWS_COUNT_ON_HOME_PAGE
+    assert response.context[
+               'object_list'].count() == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
-@pytest.mark.django_db
-def test_news_sorted_by_date(client):
+def test_news_sorted_by_date(client, home_url):
     """Тест новости отсортированы от новых к старым."""
-    response = client.get(reverse('news:home'))
+    response = client.get(home_url)
     news_dates = [news.date for news in response.context['object_list']]
     assert news_dates == sorted(news_dates, reverse=True)
 
 
-@pytest.mark.django_db
 def test_comments_sorted_by_creation_time(client, news_detail_url):
     """Тест комментарии идут в хронологическом порядке."""
     response = client.get(news_detail_url)
@@ -36,7 +36,6 @@ def test_comments_sorted_by_creation_time(client, news_detail_url):
         ('author_client', True),
     ]
 )
-@pytest.mark.django_db
 def test_comment_form_availability(
         request,
         news_detail_url,
