@@ -11,10 +11,8 @@ pytestmark = pytest.mark.django_db
 def test_news_count_on_home_page(client, news_list):
     """Тест, на главной не больше NEWS_COUNT_ON_HOME_PAGE новостей."""
     response = client.get(reverse('news:home'))
-    assert (
-            response.context[
-                'object_list'].count() == settings.NEWS_COUNT_ON_HOME_PAGE
-    )
+    assert (response.context[
+        'object_list'].count() == settings.NEWS_COUNT_ON_HOME_PAGE)
 
 
 def test_news_sorted_by_date(client, home_url):
