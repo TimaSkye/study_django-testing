@@ -1,58 +1,41 @@
-from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
 from django.urls import reverse
 
 from notes.forms import NoteForm
-from notes.models import Note
-
-User = get_user_model()
+from .base import BaseTestContent, URLS, NOTE_TITLE, NOTE_TEXT, SLUG
 
 
-class TestContent(TestCase):
+class TestContent(BaseTestContent):
     """Набор тестов контента."""
 
-    NOTE_TITLE = 'Тестовая заметка'
-    NOTE_TEXT = 'Текст заметки'
-    FORM_PAGES = (
-        ('notes:add', None),
-        ('notes:edit', 'slug'),
-    )
+    def test_author_sees_only_own_notes(self):
+        """Автор видит только свою заметку и только одну."""
+        url = reverse(URLS['NOTE_LIST'])
+        response = self.author_client.get(url)
+        object_list = response.context['object_list']
+        self.assertEqual(len(object_list), 1)
+        note = object_list[0]
+        self.assertEqual(note.title, NOTE_TITLE)
+        self.assertEqual(note.text, NOTE_TEXT)
+        self.assertEqual(note.author, self.author)
 
-    @classmethod
-    def setUpTestData(cls):
-        """Набор тестовых данных."""
-        cls.author = User.objects.create(username='Автор')
-        cls.other_user = User.objects.create(username='Другой пользователь')
-        cls.note = Note.objects.create(
-            title=cls.NOTE_TITLE,
-            text=cls.NOTE_TEXT,
-            author=cls.author,
-            slug='test-note'
-        )
-        cls.author_client = Client()
-        cls.author_client.force_login(cls.author)
-        cls.other_client = Client()
-        cls.other_client.force_login(cls.other_user)
-
-    def test_notes_list_visibility(self):
-        """Проверка видимости заметок в списке."""
-        test_cases = [
-            (self.author_client, True),
-            (self.other_client, False)
-        ]
-        url = reverse('notes:list')
-        for client, should_contain in test_cases:
-            with self.subTest(should_contain=should_contain):
-                response = client.get(url)
-                object_list = response.context['object_list']
-                self.assertEqual(self.note in object_list, should_contain)
+    def test_other_user_doesnt_see_author_notes(self):
+        """Другой пользователь не видит чужую заметку."""
+        url = reverse(URLS['NOTE_LIST'])
+        response = self.other_client.get(url)
+        object_list = response.context['object_list']
+        self.assertEqual(len(object_list), 0)
 
     def test_forms_display(self):
-        """Проверка отображения форм."""
-        for url_name, arg_name in self.FORM_PAGES:
-            with self.subTest(url_name=url_name):
-                args = (self.note.slug,) if arg_name else ()
-                url = reverse(url_name, args=args)
+        """
+        Проверка отображения форм на страницах
+        добавления и редактирования.
+        """
+        urls_and_forms = (
+            (reverse(URLS['NOTE_ADD']), NoteForm),
+            (reverse(URLS['NOTE_EDIT'], args=(SLUG,)), NoteForm),
+        )
+        for url, form_class in urls_and_forms:
+            with self.subTest(url=url):
                 response = self.author_client.get(url)
                 self.assertIn('form', response.context)
-                self.assertIsInstance(response.context['form'], NoteForm)
+                self.assertIsInstance(response.context['form'], form_class)
